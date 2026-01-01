@@ -98,7 +98,7 @@ export default function AdminReservations() {
         try {
             // Optimistic update
             setReservations(prev => prev.map(r =>
-                r.id === reservationId ? { ...r, statut: newStatus } : r
+                r.id === reservationId ? { ...r, statut: newStatus as any } : r
             ));
 
             const updateData: any = { statut: newStatus };
