@@ -110,8 +110,8 @@ function SouscriptionContent() {
                     plan_id: plan.id,
                     plan_name: plan.name,
                     status: 'en_attente',
-                    current_period_start: startDate.toISOString(),
-                    current_period_end: endDate.toISOString(),
+                    start_date: startDate.toISOString(),
+                    end_date: endDate.toISOString(),
                     is_initial_payment_collected: false,
                     duration_months: durationMonths,
                     price_paid: plan.price
