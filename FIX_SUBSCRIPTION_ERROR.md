@@ -1,0 +1,182 @@
+# Fix for Subscription Errors: Schema & RLS Policy Issues
+
+## Problems
+
+Clients were seeing multiple errors when trying to subscribe:
+
+### 1. Missing Column Errors
+```
+Could not find the 'adresse' column of 'user_subscriptions' in the schema cache
+Could not find the 'duration_months' column of 'user_subscriptions' in the schema cache
+```
+
+### 2. Row Level Security Error
+```
+new row violates row-level security policy for table "user_subscriptions"
+```
+
+### 3. Status Check Constraint Error
+```
+new row for relation "user_subscriptions" violates check constraint "user_subscriptions_status_check"
+```
+
+## Root Causes
+
+### Issue 1: Missing Database Columns
+The subscription form and subscription viewing pages were trying to access database columns that didn't exist. The `user_subscriptions` table was missing multiple required columns:
+- `user_email`, `nom`, `prenom`, `telephone` - user information
+- `adresse`, `ville` - address fields
+- `plan_id`, `plan_name` - subscription plan details
+- `status` - subscription status
+- `start_date`, `end_date` - subscription period
+- `is_initial_payment_collected` - payment tracking
+- `duration_months` - plan duration
+- `price_paid` - amount paid
+- `usage_counts` - usage tracking
+- `created_at`, `updated_at` - timestamps (used for ordering and tracking)
+
+### Issue 2: Missing RLS Policies
+Supabase Row Level Security (RLS) was enabled on the table but no policies were defined to allow:
+- Authenticated users to INSERT their subscriptions
+- Users to SELECT their own subscriptions
+- Admin/service role to manage all subscriptions
+
+### Issue 3: Invalid Status Check Constraint
+The `status` column had a CHECK CONSTRAINT that didn't include all the values used by the application:
+- Application uses: `'en_attente'`, `'actif'`, `'expire'`, `'annule'`
+- Old constraint was missing `'en_attente'` (pending status)
+- When trying to create a subscription with `status: 'en_attente'`, the constraint rejected it
+
+Additionally, date columns were inconsistently named (`current_period_start/end` in form vs `start_date/end_date` in reads)
+
+## Files Changed
+
+1. **app/souscription-abonnement/page.tsx** (lines 113-114)
+   - Fixed: Changed `current_period_start` → `start_date`
+   - Fixed: Changed `current_period_end` → `end_date`
+   - Now matches the TypeScript interface and all read operations
+
+2. **supabase_migration_fix_user_subscriptions.sql** (NEW FILE)
+   - SQL script to add missing columns to the database
+
+## How to Fix
+
+### Step 1: Run the SQL Migration (REQUIRED)
+
+**THIS IS THE MOST IMPORTANT STEP - The subscription form will NOT work until you run this SQL!**
+
+#### Option A: Run the Main Migration (Recommended)
+
+1. Go to your Supabase dashboard: https://app.supabase.com
+2. Select your project
+3. Navigate to the SQL Editor (left sidebar)
+4. Copy and paste the ENTIRE content of `supabase_migration_fix_user_subscriptions.sql`
+5. Click "Run" to execute the SQL script
+
+The script now has error handling and will skip policies that already exist.
+
+#### Option B: If You Get "Policy Already Exists" Error
+
+If you previously ran part of the migration and see policy errors:
+
+1. First run `supabase_cleanup_policies.sql` to remove all existing policies
+2. Then run the main migration `supabase_migration_fix_user_subscriptions.sql`
+
+This ensures a clean slate before creating the policies.
+
+This will fix ALL THREE issues in one operation:
+
+**A) Add ALL missing columns:**
+- `user_email` (TEXT) - user's email
+- `nom` (TEXT) - last name
+- `prenom` (TEXT) - first name
+- `telephone` (TEXT) - phone number
+- `adresse` (TEXT) - address
+- `ville` (TEXT) - city
+- `plan_id` (UUID) - subscription plan ID
+- `plan_name` (TEXT) - plan name
+- `status` (TEXT) - subscription status
+- `start_date` (TIMESTAMPTZ) - subscription start
+- `end_date` (TIMESTAMPTZ) - subscription end
+- `is_initial_payment_collected` (BOOLEAN) - payment status
+- `duration_months` (INTEGER) - plan duration
+- `price_paid` (NUMERIC) - amount paid
+- `usage_counts` (JSONB) - usage tracking
+- `created_at` (TIMESTAMPTZ) - record creation timestamp
+- `updated_at` (TIMESTAMPTZ) - record update timestamp
+
+**B) Configure Row Level Security (RLS) policies:**
+- Enable RLS on the table
+- Allow authenticated users to insert subscriptions
+- Allow users to view their own subscriptions
+- Allow service role (admin) to manage all subscriptions
+
+**C) Fix status column check constraint:**
+- Remove old constraint that was missing `'en_attente'`
+- Add new constraint allowing all valid status values:
+  - `'en_attente'` (pending)
+  - `'actif'` (active)
+  - `'expire'` (expired)
+  - `'annule'` (cancelled)
+
+### Step 2: Verify the Fix
+
+After running the migration, test the subscription flow:
+1. Go to your website
+2. Navigate to the subscription page
+3. Fill out the form
+4. Submit - the error should be gone
+
+### Step 3: Check Existing Data (if applicable)
+
+If you have existing subscriptions with `current_period_start/end` columns:
+- Uncomment and run Step 3 in the SQL migration to migrate old data
+- Optionally run Step 4 to clean up old columns
+
+## Technical Details
+
+### Database Schema (user_subscriptions table)
+
+Required columns:
+- `id` - UUID (primary key)
+- `user_email` - TEXT
+- `nom` - TEXT (last name)
+- `prenom` - TEXT (first name)
+- `telephone` - TEXT (phone)
+- `adresse` - TEXT (address) **[ADDED]**
+- `ville` - TEXT (city) **[ADDED]**
+- `plan_id` - UUID
+- `plan_name` - TEXT
+- `start_date` - TIMESTAMPTZ **[STANDARDIZED]**
+- `end_date` - TIMESTAMPTZ **[STANDARDIZED]**
+- `status` - TEXT
+- `usage_counts` - JSONB
+- `is_initial_payment_collected` - BOOLEAN
+- `duration_months` - INTEGER
+- `price_paid` - NUMERIC
+
+### Code Changes
+
+The subscription form now correctly uses the same column names as the rest of the application:
+- Form submission: uses `start_date` and `end_date`
+- Admin panel: reads `start_date` and `end_date`
+- Email API: reads `start_date` and `end_date`
+- User dashboard: reads `start_date` and `end_date`
+
+All components now consistently use the same column names.
+
+## Prevention
+
+To prevent this issue in the future:
+1. Always ensure TypeScript interfaces match database schema
+2. Use a migration system for schema changes
+3. Test form submissions in a development environment before production
+4. Consider using Supabase's type generation: `supabase gen types typescript`
+
+## Support
+
+If you encounter any issues:
+1. Check the Supabase logs for detailed error messages
+2. Verify the SQL migration ran successfully
+3. Ensure Row Level Security (RLS) policies allow inserts to the new columns
+4. Clear your browser cache and try again

@@ -22,7 +22,7 @@ const PlanCard = ({ plan, onSubscribe }: { plan: SubscriptionPlan, onSubscribe: 
             </CardHeader>
             <CardContent className="flex flex-col flex-grow">
                 <ul className="space-y-3 text-slate-600 mb-6 flex-grow">
-                    {plan.details.map((detail, i) => (
+                    {plan.details && Array.isArray(plan.details) && plan.details.map((detail, i) => (
                         <li key={i} className="flex items-start gap-3">
                             <Check className="w-5 h-5 text-green-500 mt-1 flex-shrink-0" />
                             <span>{detail}</span>
