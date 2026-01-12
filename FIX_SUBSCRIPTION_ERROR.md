@@ -1,18 +1,28 @@
-# Fix for Subscription Error: "Could not find the 'adresse' column"
+# Fix for Subscription Error: "Could not find column in schema cache"
 
 ## Problem
 
-Clients were seeing an error when trying to subscribe:
+Clients were seeing errors when trying to subscribe:
 ```
 Could not find the 'adresse' column of 'user_subscriptions' in the schema cache
+Could not find the 'duration_months' column of 'user_subscriptions' in the schema cache
 ```
+(And potentially other missing column errors)
 
 ## Root Cause
 
-The subscription form was trying to insert data into database columns that didn't exist:
-- `adresse` (address) column - missing
-- `ville` (city) column - missing
-- Date columns were inconsistently named (`current_period_start/end` in form vs `start_date/end_date` in reads)
+The subscription form was trying to insert data into database columns that didn't exist. The `user_subscriptions` table was missing multiple required columns:
+- `user_email`, `nom`, `prenom`, `telephone` - user information
+- `adresse`, `ville` - address fields
+- `plan_id`, `plan_name` - subscription plan details
+- `status` - subscription status
+- `start_date`, `end_date` - subscription period
+- `is_initial_payment_collected` - payment tracking
+- `duration_months` - plan duration
+- `price_paid` - amount paid
+- `usage_counts` - usage tracking
+
+Additionally, date columns were inconsistently named (`current_period_start/end` in form vs `start_date/end_date` in reads)
 
 ## Files Changed
 
@@ -26,19 +36,32 @@ The subscription form was trying to insert data into database columns that didn'
 
 ## How to Fix
 
-### Step 1: Run the SQL Migration
+### Step 1: Run the SQL Migration (REQUIRED)
+
+**THIS IS THE MOST IMPORTANT STEP - The subscription form will NOT work until you run this SQL!**
 
 1. Go to your Supabase dashboard: https://app.supabase.com
 2. Select your project
 3. Navigate to the SQL Editor (left sidebar)
-4. Copy and paste the content of `supabase_migration_fix_user_subscriptions.sql`
-5. Run the SQL script
+4. Copy and paste the ENTIRE content of `supabase_migration_fix_user_subscriptions.sql`
+5. Click "Run" to execute the SQL script
 
-This will add the missing columns:
-- `adresse` (TEXT)
-- `ville` (TEXT)
-- `start_date` (TIMESTAMPTZ)
-- `end_date` (TIMESTAMPTZ)
+This will add ALL the missing columns in one operation:
+- `user_email` (TEXT) - user's email
+- `nom` (TEXT) - last name
+- `prenom` (TEXT) - first name
+- `telephone` (TEXT) - phone number
+- `adresse` (TEXT) - address
+- `ville` (TEXT) - city
+- `plan_id` (UUID) - subscription plan ID
+- `plan_name` (TEXT) - plan name
+- `status` (TEXT) - subscription status
+- `start_date` (TIMESTAMPTZ) - subscription start
+- `end_date` (TIMESTAMPTZ) - subscription end
+- `is_initial_payment_collected` (BOOLEAN) - payment status
+- `duration_months` (INTEGER) - plan duration
+- `price_paid` (NUMERIC) - amount paid
+- `usage_counts` (JSONB) - usage tracking
 
 ### Step 2: Verify the Fix
 
