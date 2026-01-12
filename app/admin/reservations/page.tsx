@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Reservation as ReservationType } from "@/types";
+import { Reservation as ReservationType, UserSubscription } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 
 export default function AdminReservations() {
     const [reservations, setReservations] = useState<ReservationType[]>([]);
+    const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
     const [filteredReservations, setFilteredReservations] = useState<ReservationType[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [filters, setFilters] = useState({
@@ -47,11 +48,25 @@ export default function AdminReservations() {
         }
     }, []);
 
+    const loadSubscriptions = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('user_subscriptions')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setSubscriptions(data || []);
+        } catch (error) {
+            console.error("Erreur lors du chargement des abonnements:", error);
+        }
+    }, []);
+
     const initData = useCallback(async () => {
         setIsLoading(true);
-        await loadReservations();
+        await Promise.all([loadReservations(), loadSubscriptions()]);
         setIsLoading(false);
-    }, [loadReservations]);
+    }, [loadReservations, loadSubscriptions]);
 
     const applyFilters = useCallback(() => {
         let filtered = [...reservations];
@@ -147,7 +162,7 @@ export default function AdminReservations() {
 
     return (
         <AdminLayout>
-            <AdminStats reservations={reservations} />
+            <AdminStats reservations={reservations} subscriptions={subscriptions} />
 
             <Card className="mb-6 shadow-lg border-0">
                 <CardHeader>

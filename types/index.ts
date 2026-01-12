@@ -44,4 +44,6 @@ export interface UserSubscription {
     is_initial_payment_collected: boolean;
     duration_months: number;
     price_paid: number;
+    created_at?: string;
+    updated_at?: string;
 }
