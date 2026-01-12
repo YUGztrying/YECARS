@@ -53,11 +53,24 @@ Additionally, date columns were inconsistently named (`current_period_start/end`
 
 **THIS IS THE MOST IMPORTANT STEP - The subscription form will NOT work until you run this SQL!**
 
+#### Option A: Run the Main Migration (Recommended)
+
 1. Go to your Supabase dashboard: https://app.supabase.com
 2. Select your project
 3. Navigate to the SQL Editor (left sidebar)
 4. Copy and paste the ENTIRE content of `supabase_migration_fix_user_subscriptions.sql`
 5. Click "Run" to execute the SQL script
+
+The script now has error handling and will skip policies that already exist.
+
+#### Option B: If You Get "Policy Already Exists" Error
+
+If you previously ran part of the migration and see policy errors:
+
+1. First run `supabase_cleanup_policies.sql` to remove all existing policies
+2. Then run the main migration `supabase_migration_fix_user_subscriptions.sql`
+
+This ensures a clean slate before creating the policies.
 
 This will fix BOTH issues in one operation:
 

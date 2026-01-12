@@ -24,50 +24,87 @@ ADD COLUMN IF NOT EXISTS usage_counts JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE user_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- Step 3: Drop existing policies if they exist (to avoid conflicts)
-DROP POLICY IF EXISTS "Users can insert their own subscriptions" ON user_subscriptions;
-DROP POLICY IF EXISTS "Users can view their own subscriptions" ON user_subscriptions;
-DROP POLICY IF EXISTS "Admins can view all subscriptions" ON user_subscriptions;
-DROP POLICY IF EXISTS "Admins can update all subscriptions" ON user_subscriptions;
-DROP POLICY IF EXISTS "Admins can delete all subscriptions" ON user_subscriptions;
+DO $$
+BEGIN
+    DROP POLICY IF EXISTS "Users can insert their own subscriptions" ON user_subscriptions;
+    DROP POLICY IF EXISTS "Users can view their own subscriptions" ON user_subscriptions;
+    DROP POLICY IF EXISTS "Admins can view all subscriptions" ON user_subscriptions;
+    DROP POLICY IF EXISTS "Admins can update all subscriptions" ON user_subscriptions;
+    DROP POLICY IF EXISTS "Admins can delete all subscriptions" ON user_subscriptions;
+    DROP POLICY IF EXISTS "Service role can view all subscriptions" ON user_subscriptions;
+    DROP POLICY IF EXISTS "Service role can update all subscriptions" ON user_subscriptions;
+    DROP POLICY IF EXISTS "Service role can delete all subscriptions" ON user_subscriptions;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Some policies may not exist, continuing...';
+END $$;
 
--- Step 4: Create RLS policies
+-- Step 4: Create RLS policies (with error handling for duplicates)
 
 -- Allow authenticated users to insert their own subscriptions
-CREATE POLICY "Users can insert their own subscriptions"
-ON user_subscriptions
-FOR INSERT
-TO authenticated
-WITH CHECK (true);  -- Allow any authenticated user to create subscriptions
+DO $$
+BEGIN
+    CREATE POLICY "Users can insert their own subscriptions"
+    ON user_subscriptions
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'Policy "Users can insert their own subscriptions" already exists, skipping...';
+END $$;
 
 -- Allow users to view their own subscriptions
-CREATE POLICY "Users can view their own subscriptions"
-ON user_subscriptions
-FOR SELECT
-TO authenticated
-USING (user_email = auth.jwt()->>'email');
+DO $$
+BEGIN
+    CREATE POLICY "Users can view their own subscriptions"
+    ON user_subscriptions
+    FOR SELECT
+    TO authenticated
+    USING (user_email = auth.jwt()->>'email');
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'Policy "Users can view their own subscriptions" already exists, skipping...';
+END $$;
 
--- Allow admins to view all subscriptions
--- Note: You'll need to have a user_roles table or metadata to identify admins
--- For now, allowing service role to access all (used by admin panel)
-CREATE POLICY "Service role can view all subscriptions"
-ON user_subscriptions
-FOR SELECT
-TO service_role
-USING (true);
+-- Allow service role to view all subscriptions
+DO $$
+BEGIN
+    CREATE POLICY "Service role can view all subscriptions"
+    ON user_subscriptions
+    FOR SELECT
+    TO service_role
+    USING (true);
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'Policy "Service role can view all subscriptions" already exists, skipping...';
+END $$;
 
 -- Allow service role to update all subscriptions
-CREATE POLICY "Service role can update all subscriptions"
-ON user_subscriptions
-FOR UPDATE
-TO service_role
-USING (true);
+DO $$
+BEGIN
+    CREATE POLICY "Service role can update all subscriptions"
+    ON user_subscriptions
+    FOR UPDATE
+    TO service_role
+    USING (true);
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'Policy "Service role can update all subscriptions" already exists, skipping...';
+END $$;
 
 -- Allow service role to delete all subscriptions
-CREATE POLICY "Service role can delete all subscriptions"
-ON user_subscriptions
-FOR DELETE
-TO service_role
-USING (true);
+DO $$
+BEGIN
+    CREATE POLICY "Service role can delete all subscriptions"
+    ON user_subscriptions
+    FOR DELETE
+    TO service_role
+    USING (true);
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'Policy "Service role can delete all subscriptions" already exists, skipping...';
+END $$;
 
 -- Step 5: Optional - If you have old data with current_period_start/end columns, migrate it
 -- (Only run these if your table has current_period_start/end columns)
