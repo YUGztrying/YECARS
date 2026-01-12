@@ -306,7 +306,7 @@ function SouscriptionContent() {
                                 <div className="border-t pt-4">
                                     <p className="text-sm text-slate-500 mb-2">Avantages inclus</p>
                                     <ul className="space-y-1">
-                                        {plan.details && plan.details.map((detail: string, i: number) => (
+                                        {plan.details && Array.isArray(plan.details) && plan.details.map((detail: string, i: number) => (
                                             <li key={i} className="flex items-start gap-2 text-sm">
                                                 <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                                                 <span>{detail}</span>

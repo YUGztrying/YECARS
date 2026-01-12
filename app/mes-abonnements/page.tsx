@@ -117,7 +117,7 @@ export default function MesAbonnements() {
                                     <p className="font-semibold text-lg">{subscription.end_date ? format(new Date(subscription.end_date), 'dd MMMM yyyy', { locale: fr }) : 'N/A'}</p>
                                 </div>
                             </div>
-                            {plan && (
+                            {plan && plan.details && Array.isArray(plan.details) && plan.details.length > 0 && (
                                 <div className="bg-slate-50 p-4 rounded-lg">
                                     <h4 className="font-bold mb-2">Avantages inclus</h4>
                                     <ul className="space-y-1 text-sm list-disc list-inside">
