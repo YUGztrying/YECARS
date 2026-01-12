@@ -23,7 +23,7 @@ new row for relation "user_subscriptions" violates check constraint "user_subscr
 ## Root Causes
 
 ### Issue 1: Missing Database Columns
-The subscription form was trying to insert data into database columns that didn't exist. The `user_subscriptions` table was missing multiple required columns:
+The subscription form and subscription viewing pages were trying to access database columns that didn't exist. The `user_subscriptions` table was missing multiple required columns:
 - `user_email`, `nom`, `prenom`, `telephone` - user information
 - `adresse`, `ville` - address fields
 - `plan_id`, `plan_name` - subscription plan details
@@ -33,6 +33,7 @@ The subscription form was trying to insert data into database columns that didn'
 - `duration_months` - plan duration
 - `price_paid` - amount paid
 - `usage_counts` - usage tracking
+- `created_at`, `updated_at` - timestamps (used for ordering and tracking)
 
 ### Issue 2: Missing RLS Policies
 Supabase Row Level Security (RLS) was enabled on the table but no policies were defined to allow:
@@ -101,6 +102,8 @@ This will fix ALL THREE issues in one operation:
 - `duration_months` (INTEGER) - plan duration
 - `price_paid` (NUMERIC) - amount paid
 - `usage_counts` (JSONB) - usage tracking
+- `created_at` (TIMESTAMPTZ) - record creation timestamp
+- `updated_at` (TIMESTAMPTZ) - record update timestamp
 
 **B) Configure Row Level Security (RLS) policies:**
 - Enable RLS on the table

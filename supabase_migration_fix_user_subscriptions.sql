@@ -18,7 +18,9 @@ ADD COLUMN IF NOT EXISTS end_date TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS is_initial_payment_collected BOOLEAN DEFAULT false,
 ADD COLUMN IF NOT EXISTS duration_months INTEGER,
 ADD COLUMN IF NOT EXISTS price_paid NUMERIC,
-ADD COLUMN IF NOT EXISTS usage_counts JSONB DEFAULT '{}'::jsonb;
+ADD COLUMN IF NOT EXISTS usage_counts JSONB DEFAULT '{}'::jsonb,
+ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW(),
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Step 2: Fix status column check constraint
 -- Remove any existing constraint on status column
