@@ -1,16 +1,23 @@
-# Fix for Subscription Error: "Could not find column in schema cache"
+# Fix for Subscription Errors: Schema & RLS Policy Issues
 
-## Problem
+## Problems
 
-Clients were seeing errors when trying to subscribe:
+Clients were seeing multiple errors when trying to subscribe:
+
+### 1. Missing Column Errors
 ```
 Could not find the 'adresse' column of 'user_subscriptions' in the schema cache
 Could not find the 'duration_months' column of 'user_subscriptions' in the schema cache
 ```
-(And potentially other missing column errors)
 
-## Root Cause
+### 2. Row Level Security Error
+```
+new row violates row-level security policy for table "user_subscriptions"
+```
 
+## Root Causes
+
+### Issue 1: Missing Database Columns
 The subscription form was trying to insert data into database columns that didn't exist. The `user_subscriptions` table was missing multiple required columns:
 - `user_email`, `nom`, `prenom`, `telephone` - user information
 - `adresse`, `ville` - address fields
@@ -21,6 +28,12 @@ The subscription form was trying to insert data into database columns that didn'
 - `duration_months` - plan duration
 - `price_paid` - amount paid
 - `usage_counts` - usage tracking
+
+### Issue 2: Missing RLS Policies
+Supabase Row Level Security (RLS) was enabled on the table but no policies were defined to allow:
+- Authenticated users to INSERT their subscriptions
+- Users to SELECT their own subscriptions
+- Admin/service role to manage all subscriptions
 
 Additionally, date columns were inconsistently named (`current_period_start/end` in form vs `start_date/end_date` in reads)
 
@@ -46,7 +59,9 @@ Additionally, date columns were inconsistently named (`current_period_start/end`
 4. Copy and paste the ENTIRE content of `supabase_migration_fix_user_subscriptions.sql`
 5. Click "Run" to execute the SQL script
 
-This will add ALL the missing columns in one operation:
+This will fix BOTH issues in one operation:
+
+**A) Add ALL missing columns:**
 - `user_email` (TEXT) - user's email
 - `nom` (TEXT) - last name
 - `prenom` (TEXT) - first name
@@ -62,6 +77,12 @@ This will add ALL the missing columns in one operation:
 - `duration_months` (INTEGER) - plan duration
 - `price_paid` (NUMERIC) - amount paid
 - `usage_counts` (JSONB) - usage tracking
+
+**B) Configure Row Level Security (RLS) policies:**
+- Enable RLS on the table
+- Allow authenticated users to insert subscriptions
+- Allow users to view their own subscriptions
+- Allow service role (admin) to manage all subscriptions
 
 ### Step 2: Verify the Fix
 
