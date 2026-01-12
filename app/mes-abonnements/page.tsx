@@ -32,29 +32,50 @@ export default function MesAbonnements() {
                     return;
                 }
 
+                console.log("Fetching subscriptions for user:", user.email);
+
                 const { data: userSubs, error: subError } = await supabase
-                    .from('user_subscriptions') // Assuming table name
+                    .from('user_subscriptions')
                     .select('*')
                     .eq('user_email', user.email)
                     .order('created_at', { ascending: false })
                     .limit(1);
 
-                if (subError) throw subError;
+                console.log("Subscriptions query result:", { userSubs, subError });
+
+                if (subError) {
+                    console.error("Subscription query error:", subError);
+                    throw subError;
+                }
 
                 if (userSubs && userSubs.length > 0) {
                     const currentSub = userSubs[0];
+                    console.log("Current subscription:", currentSub);
                     setSubscription(currentSub);
 
-                    const { data: planDetails } = await supabase
-                        .from('subscription_plans')
-                        .select('*')
-                        .eq('id', currentSub.plan_id)
-                        .single();
+                    if (currentSub.plan_id) {
+                        console.log("Fetching plan details for plan_id:", currentSub.plan_id);
+                        const { data: planDetails, error: planError } = await supabase
+                            .from('subscription_plans')
+                            .select('*')
+                            .eq('id', currentSub.plan_id)
+                            .single();
 
-                    setPlan(planDetails);
+                        console.log("Plan query result:", { planDetails, planError });
+
+                        if (planError) {
+                            console.error("Plan query error:", planError);
+                        } else {
+                            setPlan(planDetails);
+                        }
+                    } else {
+                        console.warn("Subscription has no plan_id");
+                    }
+                } else {
+                    console.log("No subscriptions found for user");
                 }
             } catch (e: any) {
-                console.error("Error loading subscription", e);
+                console.error("Error loading subscription:", e);
                 setError(e.message || "Erreur de chargement");
             }
             setIsLoading(false);
