@@ -15,6 +15,11 @@ Could not find the 'duration_months' column of 'user_subscriptions' in the schem
 new row violates row-level security policy for table "user_subscriptions"
 ```
 
+### 3. Status Check Constraint Error
+```
+new row for relation "user_subscriptions" violates check constraint "user_subscriptions_status_check"
+```
+
 ## Root Causes
 
 ### Issue 1: Missing Database Columns
@@ -34,6 +39,12 @@ Supabase Row Level Security (RLS) was enabled on the table but no policies were 
 - Authenticated users to INSERT their subscriptions
 - Users to SELECT their own subscriptions
 - Admin/service role to manage all subscriptions
+
+### Issue 3: Invalid Status Check Constraint
+The `status` column had a CHECK CONSTRAINT that didn't include all the values used by the application:
+- Application uses: `'en_attente'`, `'actif'`, `'expire'`, `'annule'`
+- Old constraint was missing `'en_attente'` (pending status)
+- When trying to create a subscription with `status: 'en_attente'`, the constraint rejected it
 
 Additionally, date columns were inconsistently named (`current_period_start/end` in form vs `start_date/end_date` in reads)
 
@@ -72,7 +83,7 @@ If you previously ran part of the migration and see policy errors:
 
 This ensures a clean slate before creating the policies.
 
-This will fix BOTH issues in one operation:
+This will fix ALL THREE issues in one operation:
 
 **A) Add ALL missing columns:**
 - `user_email` (TEXT) - user's email
@@ -96,6 +107,14 @@ This will fix BOTH issues in one operation:
 - Allow authenticated users to insert subscriptions
 - Allow users to view their own subscriptions
 - Allow service role (admin) to manage all subscriptions
+
+**C) Fix status column check constraint:**
+- Remove old constraint that was missing `'en_attente'`
+- Add new constraint allowing all valid status values:
+  - `'en_attente'` (pending)
+  - `'actif'` (active)
+  - `'expire'` (expired)
+  - `'annule'` (cancelled)
 
 ### Step 2: Verify the Fix
 

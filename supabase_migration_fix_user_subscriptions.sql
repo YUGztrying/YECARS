@@ -20,10 +20,26 @@ ADD COLUMN IF NOT EXISTS duration_months INTEGER,
 ADD COLUMN IF NOT EXISTS price_paid NUMERIC,
 ADD COLUMN IF NOT EXISTS usage_counts JSONB DEFAULT '{}'::jsonb;
 
--- Step 2: Enable Row Level Security (RLS) on the table
+-- Step 2: Fix status column check constraint
+-- Remove any existing constraint on status column
+DO $$
+BEGIN
+    -- Drop the constraint if it exists
+    ALTER TABLE user_subscriptions DROP CONSTRAINT IF EXISTS user_subscriptions_status_check;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Constraint may not exist, continuing...';
+END $$;
+
+-- Add a new constraint that allows all valid status values
+ALTER TABLE user_subscriptions
+ADD CONSTRAINT user_subscriptions_status_check
+CHECK (status IN ('en_attente', 'actif', 'expire', 'annule'));
+
+-- Step 3: Enable Row Level Security (RLS) on the table
 ALTER TABLE user_subscriptions ENABLE ROW LEVEL SECURITY;
 
--- Step 3: Drop existing policies if they exist (to avoid conflicts)
+-- Step 4: Drop existing policies if they exist (to avoid conflicts)
 DO $$
 BEGIN
     DROP POLICY IF EXISTS "Users can insert their own subscriptions" ON user_subscriptions;
@@ -39,7 +55,7 @@ EXCEPTION
         RAISE NOTICE 'Some policies may not exist, continuing...';
 END $$;
 
--- Step 4: Create RLS policies (with error handling for duplicates)
+-- Step 5: Create RLS policies (with error handling for duplicates)
 
 -- Allow authenticated users to insert their own subscriptions
 DO $$
@@ -106,18 +122,18 @@ EXCEPTION
         RAISE NOTICE 'Policy "Service role can delete all subscriptions" already exists, skipping...';
 END $$;
 
--- Step 5: Optional - If you have old data with current_period_start/end columns, migrate it
+-- Step 6: Optional - If you have old data with current_period_start/end columns, migrate it
 -- (Only run these if your table has current_period_start/end columns)
 -- UPDATE user_subscriptions
 -- SET start_date = current_period_start,
 --     end_date = current_period_end
 -- WHERE start_date IS NULL;
 
--- Step 6: Optional - Remove old columns after migration if they exist
+-- Step 7: Optional - Remove old columns after migration if they exist
 -- ALTER TABLE user_subscriptions DROP COLUMN IF EXISTS current_period_start;
 -- ALTER TABLE user_subscriptions DROP COLUMN IF EXISTS current_period_end;
 
--- Step 7: Verify the changes
+-- Step 8: Verify the changes
 SELECT column_name, data_type, is_nullable
 FROM information_schema.columns
 WHERE table_name = 'user_subscriptions'
