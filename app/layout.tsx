@@ -3,7 +3,9 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import MaintenancePage from "@/components/MaintenancePage";
 import { cn } from "@/lib/utils";
+import { isMaintenanceMode } from "@/lib/maintenance";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,14 +19,23 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Check if maintenance mode is enabled
+  const maintenanceMode = isMaintenanceMode();
+
   return (
     <html lang="fr">
       <body className={cn(inter.className, "min-h-screen bg-slate-50")} suppressHydrationWarning>
-        <Header />
-        <main className="min-h-screen">
-          {children}
-        </main>
-        <Footer />
+        {maintenanceMode ? (
+          <MaintenancePage />
+        ) : (
+          <>
+            <Header />
+            <main className="min-h-screen">
+              {children}
+            </main>
+            <Footer />
+          </>
+        )}
       </body>
     </html>
   );
